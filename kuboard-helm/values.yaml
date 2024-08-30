@@ -1,4 +1,8 @@
 
+MariadbImg: "swr.cn-north-4.myhuaweicloud.com/hfbbg4/mariadb:11.2.2-jammy" # mariadb:11.2.2-jammy
+KuboardImg: "swr.cn-north-4.myhuaweicloud.com/hfbbg4/kuboard:v4" # eipwork/kuboard:v4
+
+
 pvc:
   storageClassName: "csi-disk-topology" # mylocalsc1 csi-disk-topology
   storage: "5Gi" #20Gi
