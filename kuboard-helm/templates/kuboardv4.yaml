@@ -46,11 +46,11 @@ spec:
   - metadata:
       name: kuboard-mariadb-data
     spec:
-      storageClassName: mylocalsc1
+      storageClassName:  {{ .Values.pvc.storageClassName }} #mylocalsc1
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 20Gi
+          storage:  {{ .Values.pvc.storage }} #20Gi
 
 ---
 apiVersion: v1
