@@ -1,4 +1,20 @@
-# Kuboard v4 Ldap example
+
+# kuboard v4 安装在 华为云CCE中
+```sh
+
+# 安装
+make uninstall #卸载
+make install # 安装
+make get #查看负载情况
+
+# 配置说明·
+# - Makefile: 修改kuboard安装的命名空间
+# - values.yaml: 修改helm配置
+
+
+```
+
+## Kuboard v4 Ldap example
 
 This project is a example to show how to authenticate Kuboard v4 via LDAP server.
 

@@ -1,0 +1,143 @@
+
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kuboard-mariadb
+  name: kuboard-mariadb
+spec:
+  serviceName: "kuboard-mariadb-headless"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuboard-mariadb
+  template:
+    metadata:
+      labels:
+        app: kuboard-mariadb
+    spec:
+      containers:
+      - name: kuboard-mariadb
+        image: {{ .Values.MariadbImg }} # mariadb:11.2.2-jammy
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: kuboard-mariadb-data
+          mountPath: /var/lib/mysql
+          subPath: data1
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          value: "kuboardpwd"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "kuboardpwd"
+        - name: TZ
+          value: "Asia/Shanghai"
+        volumeMounts:
+        - name: my-cnf
+          mountPath: /docker-entrypoint-initdb.d/create_db.sql
+          subPath: create_db.sql
+      volumes:
+        - name: my-cnf
+          configMap:
+            name: my-cnf-{{ .Release.Name }}
+  volumeClaimTemplates:
+  - metadata:
+      name: kuboard-mariadb-data
+    spec:
+      storageClassName: mylocalsc1
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 20Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: my-cnf-{{ .Release.Name }}
+  name: my-cnf-{{ .Release.Name }}
+data:
+  create_db.sql: |
+    CREATE DATABASE kuboard DEFAULT CHARACTER SET = 'utf8mb4' DEFAULT COLLATE = 'utf8mb4_unicode_ci';
+    create user 'kuboard'@'%' identified by 'kuboardpwd';
+    grant all privileges on kuboard.* to 'kuboard'@'%';
+    FLUSH PRIVILEGES;
+
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    app: db
+spec:
+  ports:
+  - port: 3306
+    name: db
+  clusterIP: None
+  selector:
+    app: kuboard-mariadb
+
+
+---
+
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kuboard-app
+  name: kuboard-app
+spec:
+  serviceName: "kuboard-app-headless"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuboard-app
+  template:
+    metadata:
+      labels:
+        app: kuboard-app
+    spec:
+      containers:
+      - name: kuboard-app
+        image: {{ .Values.KuboardImg }} # eipwork/kuboard:v4
+
+        env:
+        - name: DB_DRIVER
+          value: "org.mariadb.jdbc.Driver"
+        - name: DB_URL
+          value: "jdbc:mariadb://db:3306/kuboard?serverTimezone=Asia/Shanghai"
+        - name: DB_USERNAME
+          value: "kuboard"
+        - name: DB_PASSWORD
+          value: "kuboardpwd"
+        - name: TZ
+          value: "Asia/Shanghai"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kuboard
+  # namespace: kube-system
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: {{ .Values.svc.port }}
+    targetPort: {{ .Values.svc.targetPort }}
+    nodePort: {{ .Values.svc.nodePort }}
+  selector:
+    app: kuboard-app
+
+# make uninstall
+# make install
+# make get
+
