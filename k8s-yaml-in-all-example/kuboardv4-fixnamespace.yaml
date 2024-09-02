@@ -1,0 +1,139 @@
+---
+# Source: kuboard-helm/templates/kuboardv4.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: my-cnf-kuboard1
+  name: my-cnf-kuboard1
+  namespace: hwx1166232
+data:
+  create_db.sql: |
+    CREATE DATABASE kuboard DEFAULT CHARACTER SET = 'utf8mb4' DEFAULT COLLATE = 'utf8mb4_unicode_ci';
+    create user 'kuboard'@'%' identified by 'kuboardpwd';
+    grant all privileges on kuboard.* to 'kuboard'@'%';
+    FLUSH PRIVILEGES;
+---
+# Source: kuboard-helm/templates/kuboardv4.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    app: db
+  namespace: hwx1166232
+spec:
+  ports:
+  - port: 3306
+    name: db
+  clusterIP: None
+  selector:
+    app: kuboard-mariadb
+---
+# Source: kuboard-helm/templates/kuboardv4.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kuboard
+  namespace: hwx1166232
+  # namespace: kube-system
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 32567
+  selector:
+    app: kuboard-app
+
+# make uninstall
+# make install
+# make get
+---
+# Source: kuboard-helm/templates/kuboardv4.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kuboard-mariadb
+  name: kuboard-mariadb
+  namespace: hwx1166232
+spec:
+  serviceName: "kuboard-mariadb-headless"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuboard-mariadb
+  template:
+    metadata:
+      labels:
+        app: kuboard-mariadb
+    spec:
+      containers:
+      - name: kuboard-mariadb
+        image: swr.cn-north-4.myhuaweicloud.com/hfbbg4/mariadb:11.2.2-jammy # mariadb:11.2.2-jammy
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: kuboard-mariadb-data
+          mountPath: /var/lib/mysql
+          subPath: data1
+        - name: my-cnf
+          mountPath: /docker-entrypoint-initdb.d/create_db.sql
+          subPath: create_db.sql
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          value: "kuboardpwd"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "kuboardpwd"
+        - name: TZ
+          value: "Asia/Shanghai"
+      volumes:
+        - name: my-cnf
+          configMap:
+            name: my-cnf-kuboard1
+  volumeClaimTemplates:
+  - metadata:
+      name: kuboard-mariadb-data
+    spec:
+      storageClassName:  csi-disk-topology #mylocalsc1
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage:  5Gi #20Gi
+---
+# Source: kuboard-helm/templates/kuboardv4.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: kuboard-app
+  name: kuboard-app
+  namespace: hwx1166232
+spec:
+  serviceName: "kuboard-app-headless"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuboard-app
+  template:
+    metadata:
+      labels:
+        app: kuboard-app
+    spec:
+      containers:
+      - name: kuboard-app
+        image: swr.cn-north-4.myhuaweicloud.com/hfbbg4/kuboard:v4 # eipwork/kuboard:v4
+
+        env:
+        - name: DB_DRIVER
+          value: "org.mariadb.jdbc.Driver"
+        - name: DB_URL
+          value: "jdbc:mariadb://db:3306/kuboard?serverTimezone=Asia/Shanghai"
+        - name: DB_USERNAME
+          value: "kuboard"
+        - name: DB_PASSWORD
+          value: "kuboardpwd"
+        - name: TZ
+          value: "Asia/Shanghai"
