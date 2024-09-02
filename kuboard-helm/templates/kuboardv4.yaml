@@ -27,6 +27,9 @@ spec:
         - name: kuboard-mariadb-data
           mountPath: /var/lib/mysql
           subPath: data1
+        - name: my-cnf
+          mountPath: /docker-entrypoint-initdb.d/create_db.sql
+          subPath: create_db.sql
         env:
         - name: MARIADB_ROOT_PASSWORD
           value: "kuboardpwd"
@@ -34,10 +37,6 @@ spec:
           value: "kuboardpwd"
         - name: TZ
           value: "Asia/Shanghai"
-        volumeMounts:
-        - name: my-cnf
-          mountPath: /docker-entrypoint-initdb.d/create_db.sql
-          subPath: create_db.sql
       volumes:
         - name: my-cnf
           configMap:
